@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AION 2 ペット獲得チェッカー (全種族・特殊完全対応版)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #0b0e14;
+      color: #e2e8f0;
+    }
+    .font-cinzel { font-family: 'Cinzel', serif; }
+    .glass-card {
+      background: rgba(18, 24, 38, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-modal {
+      background: rgba(15, 20, 32, 0.95);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(51, 65, 85, 0.8);
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 1);
+    }
+    .gold-glow {
+      box-shadow: 0 0 15px rgba(234, 179, 8, 0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-12 flex flex-col justify-between">
+
+  <!-- ヘッダー -->
+  <header class="border-b border-slate-800 bg-slate-950/80 sticky top-0 z-30 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-sky-600 via-indigo-600 to-rose-600 flex items-center justify-center text-white shadow-lg">
+          <i class="fa-solid font-cinzel text-xl">A2</i>
+        </div>
+        <div>
+          <h1 class="font-cinzel text-xl font-bold tracking-wider text-amber-400 flex items-center gap-2">
+            AION 2 <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-sans">PET TRACKER</span>
+          </h1>
+          <p class="text-xs text-slate-400">知性・野生・自然・変形・特殊 全ペット対応チェッカー</p>
+        </div>
+      </div>
+
+      <!-- 進捗メーター -->
+      <div class="hidden md:flex items-center gap-6 bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-800">
+        <div class="text-xs">
+          <div class="text-slate-400 mb-1 flex justify-between gap-4">
+            <span>全体獲得進捗</span>
+            <span id="progressText" class="text-amber-400 font-bold">0 / 0 (0%)</span>
+          </div>
+          <div class="w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div id="progressBar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full w-0 transition-all duration-500"></div>
+          </div>
+        </div>
+        <div class="flex gap-3 text-xs border-l border-slate-800 pl-4">
+          <div><span class="text-slate-500">未獲得:</span> <span id="statUnacquired" class="text-slate-300 font-semibold">0</span></div>
+          <div><span class="text-emerald-400">獲得済み:</span> <span id="statAcquired" class="text-emerald-400 font-semibold">0</span></div>
+          <div><span class="text-amber-400">Lv.Max:</span> <span id="statMax" class="text-amber-400 font-semibold">0</span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex-1 w-full">
+    
+    <!-- ツールバー -->
+    <div class="glass-card rounded-xl p-4 mb-6 shadow-xl space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+        
+        <!-- 検索入力 -->
+        <div class="md:col-span-3 relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400"></i>
+          <input type="text" id="searchInput" placeholder="ペット名・獲得場所で検索..." 
+            class="w-full pl-10 pr-4 py-2 bg-slate-900/90 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-amber-500 text-slate-200 placeholder-slate-500">
+        </div>
+
+        <!-- 陣営・区分フィルター -->
+        <div class="md:col-span-2">
+          <select id="filterFaction" class="w-full px-3 py-2 bg-slate-900/90 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-amber-500 text-slate-200">
+            <option value="ALL">区分: すべて表示</option>
+            <option value="ELYOS">天族エリア含む (ベルテロン等)</option>
+            <option value="ASMO">魔族エリア含む (アルトガルド等)</option>
+            <option value="SPECIAL">商店 / NPC / 特殊</option>
+            <option value="BOX">ペット箱限定</option>
+          </select>
+        </div>
+
+        <!-- 主要マップ・入手先フィルター -->
+        <div class="md:col-span-2">
+          <select id="filterMap" class="w-full px-3 py-2 bg-slate-900/90 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-amber-500 text-slate-200">
+            <option value="ALL">マップ/入手先: すべて</option>
+            <option value="ベルテロン">ベルテロン (天族)</option>
+            <option value="アルトガルド">アルトガルド (魔族)</option>
+            <option value="モルヘイム">モルヘイム (魔族)</option>
+            <option value="エルテネン">エルテネン (天族)</option>
+            <option value="商店">商店 / 販売NPC</option>
+            <option value="炎の神殿">炎の神殿 (ID)</option>
+            <option value="ドラウプニル">ドラウプニル (ID)</option>
+            <option value="ペット箱">ペット箱</option>
+          </select>
+        </div>
+
+        <!-- 種族フィルター -->
+        <div class="md:col-span-2">
+          <select id="filterType" class="w-full px-3 py-2 bg-slate-900/90 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-amber-500 text-slate-200">
+            <option value="ALL">種類: すべて</option>
+            <option value="知性">知性</option>
+            <option value="野生">野生</option>
+            <option value="自然">自然</option>
+            <option value="変形">変形</option>
+            <option value="特殊">特殊</option>
+          </select>
+        </div>
+
+        <!-- 状態フィルター -->
+        <div class="md:col-span-1">
+          <select id="filterStatus" class="w-full px-2 py-2 bg-slate-900/90 border border-slate-700 rounded-lg text-xs focus:outline-none focus:border-amber-500 text-slate-200">
+            <option value="ALL">状態: 全て</option>
+            <option value="未獲得">未獲得</option>
+            <option value="獲得済み">獲得済み</option>
+            <option value="取得済み(Lv.Max)">Lv.Max</option>
+          </select>
+        </div>
+
+        <!-- ソート -->
+        <div class="md:col-span-2">
+          <select id="sortBy" class="w-full px-3 py-2 bg-slate-900/90 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-amber-500 text-slate-200">
+            <option value="name">名前順 (50音)</option>
+            <option value="type">種類順</option>
+            <option value="levelDesc">理解度 (高い順)</option>
+            <option value="levelAsc">理解度 (低い順)</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- 下段アクション -->
+      <div class="flex flex-wrap items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-400">
+        <div id="itemCountDisplay" class="font-medium text-slate-400">表示中: 0件</div>
+        <div class="flex items-center gap-2">
+          <button id="openAddModalBtn" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded transition flex items-center gap-1">
+            <i class="fa-solid fa-plus"></i> ペット手動追加
+          </button>
+          <button id="exportJsonBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-download text-amber-400"></i> バックアップ (JSON)
+          </button>
+          <label class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-upload text-sky-400"></i> 復元
+            <input type="file" id="importJsonInput" accept=".json" class="hidden">
+          </label>
+          <button id="resetDataBtn" class="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded border border-rose-900/50 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate-left"></i> 全初期データにリセット
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ペット一覧グリッド -->
+    <div id="petGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- JavaScriptで動的生成 -->
+    </div>
+
+    <!-- 空状態メッセージ -->
+    <div id="emptyState" class="hidden glass-card rounded-2xl p-12 text-center max-w-md mx-auto my-12 border border-slate-800">
+      <div class="w-16 h-16 bg-slate-800/80 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+        <i class="fa-solid fa-paw"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-200 mb-2">該当するペットが見つかりません</h3>
+      <p class="text-sm text-slate-400 mb-6">検索ワードや「天族/魔族/マップ」のフィルター条件を変更してください。</p>
+    </div>
+
+  </main>
+
+  <!-- 登録・編集モーダル -->
+  <div id="petModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-700">
+      
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
+        <h3 id="modalTitle" class="text-lg font-bold text-amber-400 flex items-center gap-2">
+          <i class="fa-solid fa-paw"></i> ペット情報の編集
+        </h3>
+        <button id="closeModalBtn" class="text-slate-400 hover:text-slate-200 text-lg w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="petForm" class="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1">
+        <input type="hidden" id="editPetId">
+
+        <!-- 種類 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">ペットの種類</label>
+          <div class="grid grid-cols-5 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" name="petType" value="知性" class="peer hidden" checked>
+              <div class="py-2 text-center text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900 peer-checked:bg-indigo-600 peer-checked:text-white transition">知性</div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="petType" value="野生" class="peer hidden">
+              <div class="py-2 text-center text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900 peer-checked:bg-emerald-600 peer-checked:text-white transition">野生</div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="petType" value="自然" class="peer hidden">
+              <div class="py-2 text-center text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900 peer-checked:bg-amber-600 peer-checked:text-white transition">自然</div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="petType" value="変形" class="peer hidden">
+              <div class="py-2 text-center text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900 peer-checked:bg-purple-600 peer-checked:text-white transition">変形</div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="petType" value="特殊" class="peer hidden">
+              <div class="py-2 text-center text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900 peer-checked:bg-rose-600 peer-checked:text-white transition">特殊</div>
+            </label>
+          </div>
+        </div>
+
+        <!-- ペット名 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">ペット名 <span class="text-rose-400">*</span></label>
+          <input type="text" id="petNameInput" placeholder="ペット名を入力..." class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+        </div>
+
+        <!-- 理解度 & 状態 -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">ペット理解度 (Lv.0〜3)</label>
+            <select id="petLevel" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+              <option value="0">Lv.0 (未獲得)</option>
+              <option value="1">Lv.1</option>
+              <option value="2">Lv.2</option>
+              <option value="3">Lv.3 (Max)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">獲得状態</label>
+            <select id="petStatus" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+              <option value="未獲得">未獲得</option>
+              <option value="獲得済み">獲得済み</option>
+              <option value="取得済み(Lv.Max)">取得済み (Lv.Max)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 獲得場所記述 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">獲得場所 / 入手方法</label>
+          <textarea id="locationInput" rows="3" placeholder="例: 商店 / 販売NPC / ファウンダーズパック" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500 custom-scrollbar"></textarea>
+        </div>
+
+        <!-- 保有効果 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex justify-between">
+            <span>保有効果</span>
+            <span id="effectNotice" class="text-amber-400 text-[10px]">※理解度に応じて自動連動（特殊は自由記述）</span>
+          </label>
+          <input type="text" id="petEffect" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-300 focus:outline-none">
+        </div>
+
+        <!-- メモ -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">メモ</label>
+          <input type="text" id="petNotes" placeholder="備考など..." class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div class="pt-4 flex gap-3">
+          <button type="button" id="cancelModalBtn" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-sm transition">キャンセル</button>
+          <button type="submit" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-sm shadow-lg shadow-amber-500/20 transition">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="mt-12 text-center text-xs text-slate-600 border-t border-slate-900 py-6">
+    <p>Aion 2 Pet Tracker - Complete Master Database System</p>
+  </footer>
+
+  <script>
+    // --- 全種族（知性・野生・自然・変形・特殊）完全マスターデータ ---
+    const RAW_PRESET_DATA = [
+      // 【知性】
+      { type: "知性", name: "アウルトロスの分身", location: "ペット箱：知性" },
+      { type: "知性", name: "アウルラウ呪術師", location: "ベルテロン/アウルラウの集落・礼拝者の峠道" },
+      { type: "知性", name: "ウルググ闘士", location: "ペット箱：知性" },
+      { type: "知性", name: "クラル強化警戒兵", location: "ベルテロン/ベルテロン要塞の廃墟" },
+      { type: "知性", name: "クラル強化戦闘兵", location: "ベルテロン/ベルテロン要塞の廃墟" },
+      { type: "知性", name: "クラル呪術兵", location: "ベルテロン/ベルテロン要塞の廃墟・デウス研究基地" },
+      { type: "知性", name: "クラル戦士", location: "ベルテロン/デウス研究基地・ベルテロン要塞の廃墟・赤い森" },
+      { type: "知性", name: "クラル労働者", location: "ベルテロン/ベルテロン要塞の廃墟・破壊されたアビス関門・赤い森" },
+      { type: "知性", name: "クル監督官", location: "ベルテロン/永遠の島\nアルトガルド/不滅の島" },
+      { type: "知性", name: "クル作業員", location: "ベルテロン/永遠の島・トールバスの森東部・アウルラウの集落\nアルトガルド/不滅の島" },
+      { type: "知性", name: "クル雑用係", location: "ベルテロン/永遠の島・トールバスの森東部" },
+      { type: "知性", name: "ケルビエル", location: "ベルテロン/永遠の島\nアルトガルド/不滅の島" },
+      { type: "知性", name: "ケルビオン", location: "ベルテロン/永遠の島\nアルトガルド/不滅の島" },
+      { type: "知性", name: "ケルビム", location: "ベルテロン/永遠の島\nアルトガルド/不滅の島" },
+      { type: "知性", name: "ドゥラトナ", location: "ベルテロン/カンタス渓谷西部・赤い森\nアルトガルド/トラネイン池・聖所の監視所" },
+      { type: "知性", name: "デゥラトナ雑用係", location: "ペット箱：知性" },
+      { type: "知性", name: "ドラカン監視者", location: "アルトガルド/グリバデ丘陵地東部・ドラナクタス\nベルテロン/ドラナ加工区域" },
+      { type: "知性", name: "ドラクニ薬草採り", location: "ベルテロン/ドラナ加工区域\nアルトガルド/精霊の島" },
+      { type: "知性", name: "ナーガラント守護戦士", location: "ペット箱：知性" },
+      { type: "知性", name: "ナーガ精鋭司祭", location: "ペット箱：知性" },
+      { type: "知性", name: "ニュート", location: "ベルテロン/破壊されたアビス関門" },
+      { type: "知性", name: "ニュート偵察兵", location: "アルトガルド/浄化の森" },
+      { type: "知性", name: "バーグ狂戦士", location: "アルトガルド/ドラナクタス・黒爪族の集落" },
+      { type: "知性", name: "ビロータ", location: "ベルテロン/トールバスの森東部\nアルトガルド/名もなき墓地" },
+      { type: "知性", name: "ビロータ薬草採り", location: "アルトガルド/名もなき墓地" },
+      { type: "知性", name: "プレル帳管理者", location: "エルテネン" },
+      { type: "知性", name: "マンドリー喧嘩屋", location: "ベルテロン/紅玉の島\nアルトガルド/黒爪族の集落" },
+      { type: "知性", name: "マンドリー投石屋", location: "ベルテロン/クラカ丘陵道・紅玉の島\nアルトガルド/黒爪族の集落" },
+      { type: "知性", name: "ムームー族監督官", location: "ペット箱：知性" },
+      { type: "知性", name: "ムームー族作業員", location: "アルトガルド/ドラナクタス・激戦の丘" },
+      { type: "知性", name: "ムームー族戦士", location: "アルトガルド/グリバデ丘陵地東部・黒爪族の集落・監視塔の幕舎" },
+      { type: "知性", name: "改造されたルフィーリニ", location: "ベルテロン/クラカ丘陵道・永遠の島\nアルトガルド/不滅の島" },
+      { type: "知性", name: "監視兵器クナッシュ", location: "ペット箱：知性" },
+      { type: "知性", name: "狂暴なフェルク", location: "ペット箱：知性" },
+      { type: "知性", name: "精鋭ドゥナトナ", location: "モルヘイム" },
+      { type: "知性", name: "精鋭ニュート", location: "ベルテロン/破壊されたアビス関門" },
+      { type: "知性", name: "精鋭マンドリー喧嘩屋", location: "ベルテロン/巡礼者の峠道\nアルトガルド/黒爪族の集落" },
+      { type: "知性", name: "中毒になったシュラク担夫", location: "アルトガルド/ファフナイト埋蔵地" },
+      { type: "知性", name: "腐敗したルフィーリニ", location: "ベルテロン/アルタミア高原東部\nアルトガルド/バスフェルト廃墟・激戦の丘・ドレドギオン墜落地・トラネイン丘陵地・モスランの森" },
+      { type: "知性", name: "捕食者サラスワティ", location: "ドラウプニル#2" },
+      { type: "知性", name: "無限のラクシュミ", location: "ドラウプニル" },
+
+      // 【野生】
+      { type: "野生", name: "アルマドン", location: "アルトガルド/ドレドギオン墜落地・モスランの森" },
+      { type: "野生", name: "ウルサス", location: "アルトガルド/激戦の丘・静寂の丘\nベルテロン/トールバスの森南部・幻影神の庭園・巡礼者の峠道・クラカ丘陵道" },
+      { type: "野生", name: "オスのクレストリッチ", location: "ベルテロン/エルン川中流・アルタミア高原南部" },
+      { type: "野生", name: "カイリン", location: "ベルテロン/エルン川中流\nアルトガルド/トラネイン丘陵地・聖所の監視所・トラネイン池・激戦の丘・精霊の島" },
+      { type: "野生", name: "カルニフ", location: "ベルテロン/アルタミア高原西部・トールバスの森北部・クラカ丘陵道・トールバスの森南部・アルタミア高原東部\nアルトガルド/墓地の盗掘屋の巣窟・プラークレギオン哨所・丘陵地の洞窟" },
+      { type: "野生", name: "キャンサリード", location: "ベルテロン/アルタミア峡谷・永遠の島・紅玉の島・崩れたベルテロン結界塔\nアルトガルド/ドラナクタス・精霊の島・不滅の島" },
+      { type: "野生", name: "クレストリッチ", location: "ベルテロン/エルン川中流・カンタス渓谷西部・アルタミア高原南部" },
+      { type: "野生", name: "ケルノン", location: "ペット箱：野性" },
+      { type: "野生", name: "コラドン", location: "ペット箱：野性" },
+      { type: "野生", name: "ザイフ", location: "ベルテロン/クラカ丘陵道・岩墓の丘・アルタミア高原南部・アルタミア高原東部" },
+      { type: "野生", name: "スカマ", location: "ベルテロン/赤い森・汚染された沼地・エルン川中流" },
+      { type: "野生", name: "スコーピオン", location: "ベルテロン/汚染された聖所\nアルトガルド/ファフナイト埋蔵地" },
+      { type: "野生", name: "スタータートル", location: "青い息の島\nベルテロン/永遠の島・クラカ丘陵道・崩れたベルテロン結界塔\nアルトガルド/グリバデ丘陵地西部・不滅の島・ドラナクタス" },
+      { type: "野生", name: "スパーキー", location: "ベルテロン/アウルラウの集落・追放者の森・エルン川中流・エルン川草地・アルタミア高原南部・アルタミア高原西部" },
+      { type: "野生", name: "トーグ", location: "アルトガルド/静寂の丘\n隠された秘密倉庫" },
+      { type: "野生", name: "ドラカン警備犬", location: "アルトガルド/グリバデ丘陵地東部・ドラナクタス・ アルトガルド・アムンタの隠れ家\nベルテロン/ナヒード軍団要塞\nタルジェル保管所・ラグタ地下監禁所" },
+      { type: "野生", name: "ドリトン", location: "ベルテロン/エルン川中流・カンタス渓谷西部・トールバスの森東部・精霊の休憩所・礼拝者の峠道・アルタミア渓谷・クラカ丘陵道・アルタミア高原南部\nアルトガルド/トラネイン池・イドゥン湖" },
+      { type: "野生", name: "ハイヴ", location: "ベルテロン/エルン川中流・アルタミア渓谷・アルタミア高原西部\nアルトガルド/グリバデ丘陵地東部・" },
+      { type: "野生", name: "バジリスク", location: "アルトガルド/モスランの森" },
+      { type: "野生", name: "パピス", location: "ベルテロン/カンタス渓谷西部・カンタス渓谷東部・エルン川中流・幻影神の庭園\nアルトガルド/静寂の丘・名もなき墓地・聖所の監視所・トラネイン丘陵地・逃亡者の村・ウルタムハイム・モスランの森・バスフェルト廃墟・マヒンデル絶壁・グリバデ丘陵地東部・グリバデ丘陵地南部" },
+      { type: "野生", name: "ビベル", location: "アルトガルド/名もなき墓地\nベルテロン/アルタミア高原西部" },
+      { type: "野生", name: "ファイニー", location: "ベルテロン/アルタミア渓谷・エルン川中流・永遠の島\nアルトガルド/不滅の島・浄化の森" },
+      { type: "野生", name: "ブラックス", location: "ベルテロン/アルタミア高原西部・エルン川中流・エルン川草地\nアルトガルド/聖所の監視所・激戦の丘・バスフェルト廃墟" },
+      { type: "野生", name: "ベビーオード蜘蛛", location: "ベルテロン/エルン川沼地" },
+      { type: "野生", name: "ポサ", location: "ベルテロン/トールバスの森南部\nアルトガルド/バスフェルト廃墟・グリバデ丘陵地西部・グリバデ丘陵地東部・捨てられた野営地・ウルタムハイム" },
+      { type: "野生", name: "ミューター", location: "ベルテロン/エルン川中流・エルン川沼地・トールバスの森東部・巡礼者の峠道・ベルテロン・アルタミア高原西部・アルタミア高原東部\nアルトガルド/激戦の丘" },
+      { type: "野生", name: "リュクロック", location: "アルトガルド/黒爪族の集落・ グリバデ丘陵地東部" },
+      { type: "野生", name: "ルフィーリニ", location: "ベルテロン/アルタミア高原東部" },
+      { type: "野生", name: "レピスマ", location: "ベルテロン/トールバスの森南部・永遠の島・エルン川中流\nアルトガルド/グリバデ丘陵地南部・トラネイン池・トラネイン丘陵地・グリバデ丘陵地西部・不滅の島" },
+      { type: "野生", name: "永遠のコラドン", location: "アルトガルド/グリバデ丘陵地南部" },
+      { type: "野生", name: "火炎バルゲスト", location: "ペット箱：野性" },
+      { type: "野生", name: "改造されたカルニフ", location: "ベルテロン/ ベルテロン要塞の廃墟・破壊されたアビス関門" },
+      { type: "野生", name: "灰色のバジリスク", location: "ペット箱：野性" },
+      { type: "野生", name: "灰色のルフィーリニ", location: "ペット箱：野性" },
+      { type: "野生", name: "灰色の蜘蛛", location: "アルトガルド/モスランの森\nベルテロン/嘆きの丘" },
+      { type: "野生", name: "巨大スパーキー", location: "ベルテロン/アウルラウの集落・追放者の森・カンタス渓谷東部・ アルタミア高原南部\nアルトガルド/ファフナイト埋蔵地・浄化の森" },
+      { type: "野生", name: "枯れ枝蜘蛛", location: "アルトガルド/静寂の丘・名もなき墓地・逃亡者の村・カルバリア峡谷・トラネイン丘陵地・浄化の森・激戦の丘・バスフェルト廃墟・マヒンデル絶壁・マヒンデル川・グリバデ丘陵地南部・ノルニル集会所" },
+      { type: "野生", name: "死肉虫", location: "アルトガルド/ドレドギオン墜落地" },
+      { type: "野生", name: "手懐けたカルニフ", location: "アルトガルド/ウルタムハイム・グリバデ丘陵地西部・ブレイド団の臨時哨所・北部祭壇\nジゲルの聖所・捨てられたドラカンの牢獄施設" },
+      { type: "野生", name: "手懐けたザイフ", location: "ベルテロン/巡礼者の峠道" },
+      { type: "野生", name: "精鋭ウルサス", location: "ペット箱：野性" },
+      { type: "野生", name: "精鋭カルニフ", location: "モルヘイム" },
+      { type: "野生", name: "精鋭ケネイル", location: "ペット箱：野性" },
+      { type: "野生", name: "大きなハチ", location: "ベルテロン/巡礼者の峠道" },
+      { type: "野生", name: "蜘蛛", location: "ペット箱：野性" },
+      { type: "野生", name: "洞窟のコウモリ", location: "ベルテロン/赤い森" },
+      { type: "野生", name: "不安定な蜘蛛", location: "ベルテロン/追放者の森・紅玉の島\nアルトガルド/精霊の島・浄化の森" },
+      { type: "野生", name: "変異したウルサス", location: "アルトガルド/モスランの森" },
+      { type: "野生", name: "変異した死肉虫", location: "ベルテロン/巡礼者の峠道" },
+      { type: "野生", name: "変異した変種オード蜘蛛", location: "アルトガルド/精霊の島\nベルテロン/幻影神の庭園・汚染された沼地・アルタミア高原東部" },
+      { type: "野生", name: "変異虫バルカ", location: "ペット箱：野性" },
+      { type: "野生", name: "変種アルマドン", location: "ベルテロン/カンタス渓谷東部・アルタミア高原南部" },
+      { type: "野生", name: "変種オード蜘蛛", location: "ペット箱：野性" },
+      { type: "野生", name: "変種キャンサリード", location: "ベルテロン/赤い森・紅玉の島・永遠の島" },
+      { type: "野生", name: "変種コラドン", location: "ベルテロン/クラカ丘陵道・幻影神の庭園\nアルトガルド/バスフェルト廃墟・トラネイン丘陵地" },
+      { type: "野生", name: "変種ザイフ", location: "アルトガルド/グリバデ丘陵地東部\nベルテロン/巡礼者の峠道" },
+      { type: "野生", name: "変種スカマ", location: "ベルテロン/汚染された聖所" },
+      { type: "野生", name: "変種トーグ", location: "ベルテロン/クラカ丘陵道・エルン川中流・カンタス渓谷東部・パモスの農場・アルタミア高原南部\nアルトガルド/激戦の丘" },
+      { type: "野生", name: "変種バチ", location: "ベルテロン/巡礼者の峠道・パモスの農場\nアルトガルド/名もなき墓地・静寂の丘・カルバリア峡谷・クァイリンの野営地・バスフェルト廃墟" },
+      { type: "野生", name: "墓ネズミ", location: "ペット箱：野性" },
+      { type: "野生", name: "猛毒虫スラム", location: "ペット箱：野性" },
+      { type: "野生", name: "幼いウルサス", location: "ベルテロン/クラカ丘陵道・トールバスの森南部\nアルトガルド/静寂の丘・激戦の丘" },
+      { type: "野生", name: "幼いカイリン", location: "ベルテロン/エルン川中流\nアルトガルド/精霊の島・激戦の丘・トラネイン丘陵地・ 聖所の監視所" },
+      { type: "野生", name: "幼いトーグ", location: "ペット箱：野性" },
+      { type: "野生", name: "幼いレピスマ", location: "ベルテロン/トールバスの森南部・エルン川中流\nアルトガルド/イドゥン湖・トラネイン池" },
+
+      // 【自然】
+      { type: "自然", name: "アグリント", location: "ベルテロン/幻影神の庭園・永遠の島・汚染された聖所・エルン川中流\nアルトガルド/モスランの森・不滅の島・バスフェルト廃墟" },
+      { type: "自然", name: "オードの石の精霊", location: "アルトガルド/精霊の島" },
+      { type: "自然", name: "クラビ", location: "ベルテロン/トールバスの森北部・幻影神の庭園\nアルトガルド/浄化の森" },
+      { type: "自然", name: "コヌティ作業員", location: "ベルテロン/トールバスの森北部" },
+      { type: "自然", name: "ゼルピ", location: "アルトガルド/不滅の島\nベルテロン/永遠の島・エルン川沼地" },
+      { type: "自然", name: "ディオナエ", location: "ペット箱：自然" },
+      { type: "自然", name: "ドラナ胞子", location: "ベルテロン/紅玉の島" },
+      { type: "自然", name: "ネペンデス", location: "ベルテロン/トールバスの森北部・アルタミア高原東部" },
+      { type: "自然", name: "ファンガス", location: "ベルテロン/カンタス渓谷東部" },
+      { type: "自然", name: "ファンギ", location: "ベルテロン/カンタス渓谷東部" },
+      { type: "自然", name: "やせ細ったアグリント", location: "ベルテロン/紅玉の島\nアルトガルド/名もなき墓地" },
+      { type: "自然", name: "ラフレシア", location: "アルトガルド/名もなき墓地・聖所の監視所・不滅の島・精霊の島・グリバデ丘陵地南部\nベルテロン/紅玉の島\n沈黙の墓場" },
+      { type: "自然", name: "暗黒の精霊", location: "アルトガルド/インペトシウム広場\nベルテロン/ドラナ加工区域・クラカ丘陵道・汚染された沼地\n青い息の島" },
+      { type: "自然", name: "下級火の精霊", location: "ベルテロン/永遠の島\nアルトガルド/浄化の森" },
+      { type: "自然", name: "下級水の精霊", location: "ベルテロン/永遠の島・精霊の休憩所・エルン川沼地" },
+      { type: "自然", name: "下級地の精霊", location: "ベルテロン/永遠の島" },
+      { type: "自然", name: "下級風の精霊", location: "ベルテロン/永遠の島・アルタミア渓谷\nアルトガルド/浄化の森" },
+      { type: "自然", name: "灰色のアグリント", location: "アルトガルド/精霊の島" },
+      { type: "自然", name: "灰色のディオナエ", location: "アルトガルド/モスランの森" },
+      { type: "自然", name: "乾いたアグリント", location: "ベルテロン/幻影神の庭園・アルタミア渓谷" },
+      { type: "自然", name: "干からびた森の守護者", location: "ペット箱：自然" },
+      { type: "自然", name: "古代の精霊", location: "ペット箱：自然" },
+      { type: "自然", name: "枯れ葉アグリント", location: "ベルテロン/トールバスの森南部" },
+      { type: "自然", name: "黒煙モルト", location: "炎の神殿" },
+      { type: "自然", name: "最上級火の精霊", location: "ペット箱：自然" },
+      { type: "自然", name: "最上級水の精霊", location: "ペット箱：自然" },
+      { type: "自然", name: "最上級地の精霊", location: "ペット箱：自然" },
+      { type: "自然", name: "最上級風の精霊", location: "ペット箱：自然" },
+      { type: "自然", name: "上級火の精霊", location: "アルトガルド/精霊の島・不滅の島・浄化の森\nベルテロン/幻影神の庭園\n炎の神殿" },
+      { type: "自然", name: "上級水の精霊", location: "アルトガルド/精霊の島・不滅の島・浄化の森\nベルテロン/幻影神の庭園" },
+      { type: "自然", name: "上級地の精霊", location: "アルトガルド/不滅の島・浄化の森\nベルテロン/幻影神の庭園" },
+      { type: "自然", name: "上級風の精霊", location: "アルトガルド/不滅の島・浄化の森\nベルテロン/幻影神の庭園" },
+      { type: "自然", name: "森のディオナエ", location: "ペット箱：自然" },
+      { type: "自然", name: "森の守護者", location: "ベルテロン/幻影神の庭園" },
+      { type: "自然", name: "森の精霊", location: "ベルテロン/巡礼者の峠道・エルン川沼地・エルン川中流・アルタミア渓谷\nアルトガルド/浄化の森" },
+      { type: "自然", name: "森の霊魂", location: "ベルテロン/アルタミア渓谷・幻影神の庭園" },
+      { type: "自然", name: "精鋭毒胞子ファンガス", location: "ペット箱：自然" },
+      { type: "自然", name: "精霊王の護衛戦士", location: "ペット箱：自然" },
+      { type: "自然", name: "石の精霊", location: "ベルテロン/クラカ丘陵道\nアルトガルド/浄化の森" },
+      { type: "自然", name: "赤い炎イグヌス", location: "炎の神殿" },
+      { type: "自然", name: "大葉クラビ", location: "ベルテロン/エルン川中流・幻影神の庭園\nアルトガルド/浄化の森" },
+      { type: "自然", name: "中級火の精霊", location: "ベルテロン/永遠の島\nアルトガルド/精霊の森・不滅の島" },
+      { type: "自然", name: "中級水の精霊", location: "ベルテロン/永遠の島・幻影神の庭園\nアルトガルド/精霊の森・不滅の島\n不安定な洞窟" },
+      { type: "自然", name: "中級地の精霊", location: "ベルテロン/永遠の島・幻影神の庭園\nアルトガルド/不滅の島" },
+      { type: "自然", name: "中級風の精霊", location: "ベルテロン/永遠の島・幻影神の庭園\nアルトガルド/不滅の島" },
+      { type: "自然", name: "変異した森の守護者", location: "アルトガルド/精霊の森・モスランの森" },
+      { type: "自然", name: "変異した森の精霊", location: "アルトガルド/名もなき墓地\nベルテロン/汚染された聖所" },
+      { type: "自然", name: "魔法クラビ", location: "ベルテロン/トールバスの森北部・幻影神の庭園\nアルトガルド/精霊の島・浄化の森" },
+
+      // 【変形】
+      { type: "変形", name: "オキュラゼン", location: "アルトガルド/インペトシウム広場\nベルテロン/ドラナ栽培区域・ドラナ加工区域" },
+      { type: "変形", name: "ガーディット", location: "ベルテロン/汚染された聖所" },
+      { type: "変形", name: "カルクゲルム", location: "アルトガルド/浄化の森\nベルテロン/破壊された神殿跡・カンタス渓谷西部" },
+      { type: "変形", name: "クラオ実験体", location: "ペット箱：変形" },
+      { type: "変形", name: "クラオ封印の守護者", location: "ペット箱：変形" },
+      { type: "変形", name: "クラオ変異体", location: "ペット箱：変形" },
+      { type: "変形", name: "スウォーム", location: "アルトガルド/ファフナイト埋蔵地・カルバリア峡谷" },
+      { type: "変形", name: "スライム", location: "アルトガルド/浄化の森" },
+      { type: "変形", name: "ドゥドゥカ作業員", location: "アルトガルド/黒爪族の集落" },
+      { type: "変形", name: "ドゥドゥカ投石兵", location: "アルトガルド/黒爪族の集落" },
+      { type: "変形", name: "ドラカナカルクゲルム", location: "アルトガルド/ドレドギオン墜落地" },
+      { type: "変形", name: "ドラカン探査機", location: "ベルテロン/サーブガ龍族の野営地・ドラナ加工区域・ナヒード軍団要塞\nアルトガルド/トラネイン丘陵地・ドラナクタス・ アルトガルド・聖所の監視所" },
+      { type: "変形", name: "ドラナスウォーム", location: "ベルテロン/紅玉の島" },
+      { type: "変形", name: "ドラナスライム", location: "アルトガルド/ドレドギオン墜落地" },
+      { type: "変形", name: "ドラナ汚染体", location: "ペット箱：変形" },
+      { type: "変形", name: "ドラナ変異体", location: "アルトガルド/ドレドギオン墜落地" },
+      { type: "変形", name: "ドラナ変異体の巨漢", location: "アルトガルド/不滅の島\nベルテロン/永遠の島・紅玉の島" },
+      { type: "変形", name: "ドラナ捕食者", location: "ベルテロン/紅玉の島\nアルトガルド/ドレドギオン墜落地\n武の揺りかご" },
+      { type: "変形", name: "バイオラント", location: "アルトガルド/ファフナイト埋蔵地・インペトシウム広場" },
+      { type: "変形", name: "ハルコン", location: "クラオ洞窟" },
+      { type: "変形", name: "ピノ", location: "ベルテロン/アウルラウの集落\n洞窟倉庫" },
+      { type: "変形", name: "ピノ作業員", location: "ベルテロン/アウルラウの集落" },
+      { type: "変形", name: "闇の精霊", location: "ベルテロン/アルタミア渓谷・幻影神の庭園" },
+      { type: "変形", name: "汚染されたスライム", location: "ベルテロン/汚染された聖所・エルン川沼地" },
+      { type: "変形", name: "火炎石の守護像", location: "ペット箱：変形" },
+      { type: "変形", name: "監視ガーディット", location: "ベルテロン/汚染された聖所" },
+      { type: "変形", name: "監視のオキュラゼン", location: "アルトガルド/ドラナクタス・バラタの摘発部隊哨所・アムラタ監視基地" },
+      { type: "変形", name: "寄生スウォーム", location: "アルトガルド/ファフナイト埋蔵地" },
+      { type: "変形", name: "凝固されたドラナ", location: "アルトガルド/ドレドギオン墜落地" },
+      { type: "変形", name: "銀色の刃ロータン", location: "炎の神殿" },
+      { type: "変形", name: "魂のない屍ヤブカ", location: "アルトガルド/バスフェルト廃墟\n沈黙の墓域" },
+      { type: "変形", name: "死体掃除屋", location: "アルトガルド/バスフェルト廃墟・ウルタムハイム" },
+      { type: "変形", name: "沼の怪物", location: "ペット箱：変形" },
+      { type: "変形", name: "沼地のタルゴン", location: "ベルテロン/エルン川沼地・汚染された沼地" },
+      { type: "変形", name: "色あせたドラナ", location: "アルトガルド/ファフナイト埋蔵地\nファフナイト盆地" },
+      { type: "変形", name: "色あせた浮遊体", location: "アルトガルド/ファフナイト埋蔵地\nファフナイト盆地" },
+      { type: "変形", name: "色あせた変異体", location: "アルトガルド/ファフナイト埋蔵地\nファフナイト盆地" },
+      { type: "変形", name: "色あせた変異体の巨漢", location: "アルトガルド/ファフナイト埋蔵地" },
+      { type: "変形", name: "色あせた捕食者", location: "アルトガルド/ファフナイト埋蔵地\nファフナイト盆地" },
+      { type: "変形", name: "森の怪物", location: "ベルテロン/トールバスの森北部\nアルトガルド/モスランの森" },
+      { type: "変形", name: "精鋭ガーディット", location: "ベルテロン/アルタミア高原東部" },
+      { type: "変形", name: "精鋭魂のない屍ヤブカ", location: "ペット箱：変形" },
+      { type: "変形", name: "青いカルクゲルム", location: "ベルテロン/カンタス渓谷東部\nアルトガルド/ファフナイト埋蔵地" },
+      { type: "変形", name: "毒血", location: "アルトガルド/精霊の島・浄化の森" },
+      { type: "変形", name: "門番ピノピ", location: "ペット箱：変形" },
+      { type: "変形", name: "歪んだ変異体", location: "アルトガルド/浄化の森" },
+
+      // 【特殊】
+      { type: "特殊", name: "2", location: "ショップ / イベント" },
+      { type: "特殊", name: "カボチャの馬車", location: "商店" },
+      { type: "特殊", name: "ちび幽霊", location: "商店" },
+      { type: "特殊", name: "パガティ", location: "商店 / チェンガルン商会" },
+      { type: "特殊", name: "ブラックドラゴン", location: "箱 / ファウンダーズ パック" },
+      { type: "特殊", name: "ほっぺパンパンハムスター", location: "商店" },
+      { type: "特殊", name: "俊敏なルギ", location: "販売NPC" },
+      { type: "特殊", name: "白ウサギ", location: "商店" },
+      { type: "特殊", name: "放浪商人のルギ", location: "販売NPC" }
+    ];
+
+    const BUFF_RULES = {
+      "知性": { 0: "効果なし", 1: "HP:10", 2: "HP:20 クリティカル:1", 3: "HP:30 クリティカル:2 威力:1" },
+      "野生": { 0: "効果なし", 1: "乗り物地上移動速度：1", 2: "乗り物地上移動速度：2 追加命中:1", 3: "乗り物地上移動速度：3 追加命中:2 敏捷:1" },
+      "自然": { 0: "効果なし", 1: "行動力:3", 2: "行動力:6 クリティカル抵抗:1", 3: "行動力:9 クリティカル抵抗:2 正確:1" },
+      "変形": { 0: "効果なし", 1: "乗り物疾走の行動力消耗量減少率:0.1%", 2: "乗り物疾走の行動力消耗量減少率:0.2% 追加回避:1", 3: "乗り物疾走の行動力消耗量減少率:0.3% 追加回避:2 HP:1" }
+    };
+
+    let petList = [];
+    const STORAGE_KEY = 'aion2_pets_tracker_v7';
+
+    // DOM
+    const petGrid = document.getElementById('petGrid');
+    const emptyState = document.getElementById('emptyState');
+    const searchInput = document.getElementById('searchInput');
+    const filterFaction = document.getElementById('filterFaction');
+    const filterMap = document.getElementById('filterMap');
+    const filterType = document.getElementById('filterType');
+    const filterStatus = document.getElementById('filterStatus');
+    const sortBy = document.getElementById('sortBy');
+    const itemCountDisplay = document.getElementById('itemCountDisplay');
+    
+    const progressText = document.getElementById('progressText');
+    const progressBar = document.getElementById('progressBar');
+    const statUnacquired = document.getElementById('statUnacquired');
+    const statAcquired = document.getElementById('statAcquired');
+    const statMax = document.getElementById('statMax');
+
+    const petModal = document.getElementById('petModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const petForm = document.getElementById('petForm');
+    const editPetId = document.getElementById('editPetId');
+    const petNameInput = document.getElementById('petNameInput');
+    const petLevel = document.getElementById('petLevel');
+    const petStatus = document.getElementById('petStatus');
+    const locationInput = document.getElementById('locationInput');
+    const petEffect = document.getElementById('petEffect');
+    const effectNotice = document.getElementById('effectNotice');
+    const petNotes = document.getElementById('petNotes');
+
+    function init() {
+      loadData();
+      setupEventListeners();
+      render();
+    }
+
+    function generateDefaultList() {
+      return RAW_PRESET_DATA.map((item, index) => ({
+        id: 'preset_' + index + '_' + Date.now(),
+        name: item.name,
+        type: item.type,
+        level: 0,
+        status: '未獲得',
+        location: item.location,
+        effect: calculateEffect(item.type, 0),
+        notes: '',
+        updatedAt: Date.now()
+      }));
+    }
+
+    function loadData() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          petList = JSON.parse(stored);
+        } catch (e) {
+          petList = generateDefaultList();
+        }
+      } else {
+        petList = generateDefaultList();
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(petList));
+      render();
+    }
+
+    function calculateEffect(type, level, customEffect = '') {
+      if (type === '特殊') return customEffect || '手入力効果';
+      if (BUFF_RULES[type] && BUFF_RULES[type][level] !== undefined) {
+        return BUFF_RULES[type][level];
+      }
+      return '効果なし';
+    }
+
+    function setupEventListeners() {
+      document.getElementById('openAddModalBtn').addEventListener('click', () => openModal());
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+      document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+
+      searchInput.addEventListener('input', render);
+      filterFaction.addEventListener('change', render);
+      filterMap.addEventListener('change', render);
+      filterType.addEventListener('change', render);
+      filterStatus.addEventListener('change', render);
+      sortBy.addEventListener('change', render);
+
+      document.querySelectorAll('input[name="petType"]').forEach(radio => {
+        radio.addEventListener('change', onTypeOrLevelChange);
+      });
+      petLevel.addEventListener('change', onTypeOrLevelChange);
+
+      petForm.addEventListener('submit', handleFormSubmit);
+
+      document.getElementById('exportJsonBtn').addEventListener('click', exportData);
+      document.getElementById('importJsonInput').addEventListener('change', importData);
+      document.getElementById('resetDataBtn').addEventListener('click', resetData);
+    }
+
+    function openModal(petId = null) {
+      petForm.reset();
+
+      if (petId) {
+        const pet = petList.find(p => p.id === petId);
+        if (!pet) return;
+
+        modalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ペット情報の編集';
+        editPetId.value = pet.id;
+        
+        const typeRadio = document.querySelector(`input[name="petType"][value="${pet.type}"]`);
+        if (typeRadio) typeRadio.checked = true;
+
+        petNameInput.value = pet.name;
+        petLevel.value = pet.level;
+        petStatus.value = pet.status;
+        locationInput.value = pet.location || '';
+        petNotes.value = pet.notes || '';
+        petEffect.value = pet.effect || calculateEffect(pet.type, pet.level);
+
+      } else {
+        modalTitle.innerHTML = '<i class="fa-solid fa-paw"></i> 新規ペット追加';
+        editPetId.value = '';
+        document.querySelector('input[name="petType"][value="知性"]').checked = true;
+        petLevel.value = '0';
+        petStatus.value = '未獲得';
+        petEffect.value = calculateEffect('知性', 0);
+      }
+
+      onTypeOrLevelChange();
+      petModal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      petModal.classList.add('hidden');
+    }
+
+    function onTypeOrLevelChange() {
+      const typeRadio = document.querySelector('input[name="petType"]:checked');
+      if (!typeRadio) return;
+      const type = typeRadio.value;
+      const lvl = parseInt(petLevel.value, 10);
+
+      if (lvl === 3) {
+        petStatus.value = '取得済み(Lv.Max)';
+      } else if (lvl > 0 && petStatus.value === '未獲得') {
+        petStatus.value = '獲得済み';
+      }
+
+      if (type === '特殊') {
+        petEffect.removeAttribute('readonly');
+        petEffect.classList.remove('bg-slate-950');
+        petEffect.classList.add('bg-slate-900');
+        effectNotice.textContent = '※自由記述可能';
+      } else {
+        petEffect.setAttribute('readonly', 'true');
+        petEffect.classList.add('bg-slate-950');
+        petEffect.classList.remove('bg-slate-900');
+        effectNotice.textContent = '※理解度に応じて自動連動';
+        petEffect.value = calculateEffect(type, lvl);
+      }
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const type = document.querySelector('input[name="petType"]:checked').value;
+      const name = petNameInput.value.trim();
+      if (!name) {
+        alert('ペット名を入力してください。');
+        return;
+      }
+
+      const level = parseInt(petLevel.value, 10);
+      const status = petStatus.value;
+      const location = locationInput.value.trim();
+      const notes = petNotes.value.trim();
+      const effect = calculateEffect(type, level, petEffect.value.trim());
+
+      const id = editPetId.value || 'pet_' + Date.now();
+
+      const newPet = {
+        id,
+        name,
+        type,
+        level,
+        status,
+        location,
+        effect,
+        notes,
+        updatedAt: Date.now()
+      };
+
+      const idx = petList.findIndex(p => p.id === id);
+      if (idx >= 0) {
+        petList[idx] = newPet;
+      } else {
+        petList.push(newPet);
+      }
+
+      saveData();
+      closeModal();
+    }
+
+    function updatePetLevelQuick(petId, delta) {
+      const pet = petList.find(p => p.id === petId);
+      if (!pet) return;
+
+      let newLevel = pet.level + delta;
+      if (newLevel < 0) newLevel = 0;
+      if (newLevel > 3) newLevel = 3;
+
+      pet.level = newLevel;
+
+      if (newLevel === 3) {
+        pet.status = '取得済み(Lv.Max)';
+      } else if (newLevel > 0 && pet.status === '未獲得') {
+        pet.status = '獲得済み';
+      }
+
+      pet.effect = calculateEffect(pet.type, pet.level, pet.effect);
+      pet.updatedAt = Date.now();
+
+      saveData();
+    }
+
+    function deletePet(petId) {
+      if (confirm('このペットを削除しますか？')) {
+        petList = petList.filter(p => p.id !== petId);
+        saveData();
+      }
+    }
+
+    function render() {
+      const total = petList.length;
+      const acquiredCount = petList.filter(p => p.status === '獲得済み' || p.status === '取得済み(Lv.Max)').length;
+      const maxCount = petList.filter(p => p.status === '取得済み(Lv.Max)').length;
+      const unacquiredCount = total - acquiredCount;
+      const percent = total > 0 ? Math.round((acquiredCount / total) * 100) : 0;
+
+      progressText.textContent = `${acquiredCount} / ${total} (${percent}%)`;
+      progressBar.style.width = `${percent}%`;
+      statUnacquired.textContent = unacquiredCount;
+      statAcquired.textContent = acquiredCount;
+      statMax.textContent = maxCount;
+
+      const query = searchInput.value.toLowerCase().trim();
+      const factionVal = filterFaction.value;
+      const mapVal = filterMap.value;
+      const typeVal = filterType.value;
+      const statusVal = filterStatus.value;
+      const sortVal = sortBy.value;
+
+      let filtered = petList.filter(pet => {
+        const loc = (pet.location || '');
+
+        if (factionVal === 'ELYOS') {
+          if (!loc.includes('ベルテロン') && !loc.includes('エルテネン') && !loc.includes('ポエタ')) return false;
+        } else if (factionVal === 'ASMO') {
+          if (!loc.includes('アルトガルド') && !loc.includes('モルヘイム') && !loc.includes('イスハルゲン')) return false;
+        } else if (factionVal === 'SPECIAL') {
+          if (!loc.includes('商店') && !loc.includes('NPC') && !loc.includes('パック') && pet.type !== '特殊') return false;
+        } else if (factionVal === 'BOX') {
+          if (!loc.includes('ペット箱')) return false;
+        }
+
+        if (mapVal !== 'ALL') {
+          if (!loc.includes(mapVal)) return false;
+        }
+
+        if (typeVal !== 'ALL' && pet.type !== typeVal) return false;
+
+        if (statusVal !== 'ALL' && pet.status !== statusVal) return false;
+
+        if (query) {
+          const matchName = pet.name.toLowerCase().includes(query);
+          const matchLoc = loc.toLowerCase().includes(query);
+          const matchEff = (pet.effect || '').toLowerCase().includes(query);
+          const matchNotes = (pet.notes || '').toLowerCase().includes(query);
+          if (!matchName && !matchLoc && !matchEff && !matchNotes) return false;
+        }
+
+        return true;
+      });
+
+      // ソート
+      filtered.sort((a, b) => {
+        if (sortVal === 'name') return a.name.localeCompare(b.name, 'ja');
+        if (sortVal === 'type') return a.type.localeCompare(b.type, 'ja') || a.name.localeCompare(b.name, 'ja');
+        if (sortVal === 'levelDesc') return b.level - a.level || a.name.localeCompare(b.name, 'ja');
+        if (sortVal === 'levelAsc') return a.level - b.level || a.name.localeCompare(b.name, 'ja');
+        return 0;
+      });
+
+      itemCountDisplay.textContent = `表示中: ${filtered.length}件 (全 ${total}件)`;
+
+      if (filtered.length === 0) {
+        petGrid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      petGrid.innerHTML = '';
+
+      filtered.forEach(pet => {
+        const card = document.createElement('div');
+        const isMax = pet.status === '取得済み(Lv.Max)' || pet.level === 3;
+        const isAcquired = pet.status === '獲得済み' || isMax;
+
+        const typeBadgeStyles = {
+          '知性': 'bg-indigo-950/80 text-indigo-300 border-indigo-700/50',
+          '野生': 'bg-emerald-950/80 text-emerald-300 border-emerald-700/50',
+          '自然': 'bg-amber-950/80 text-amber-300 border-amber-700/50',
+          '変形': 'bg-purple-950/80 text-purple-300 border-purple-700/50',
+          '特殊': 'bg-rose-950/80 text-rose-300 border-rose-700/50'
+        };
+
+        let statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] bg-slate-800 text-slate-400 border border-slate-700">未獲得</span>`;
+        if (isMax) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold gold-glow"><i class="fa-solid fa-crown text-amber-400 mr-1"></i>Lv.Max</span>`;
+        } else if (isAcquired) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-medium"><i class="fa-solid fa-check mr-1"></i>獲得済み</span>`;
+        }
+
+        const locationFormatted = (pet.location || '未設定')
+          .split('\n')
+          .map(line => {
+            let labelBadge = '';
+            if (line.includes('ベルテロン') || line.includes('エルテネン')) {
+              labelBadge = `<span class="text-[10px] px-1.5 py-0.2 bg-sky-950 text-sky-300 border border-sky-800 rounded mr-1">天族</span>`;
+            } else if (line.includes('アルトガルド') || line.includes('モルヘイム')) {
+              labelBadge = `<span class="text-[10px] px-1.5 py-0.2 bg-rose-950 text-rose-300 border border-rose-800 rounded mr-1">魔族</span>`;
+            } else if (line.includes('商店') || line.includes('NPC') || line.includes('パック')) {
+              labelBadge = `<span class="text-[10px] px-1.5 py-0.2 bg-purple-950 text-purple-300 border border-purple-800 rounded mr-1">ショップ/NPC</span>`;
+            } else if (line.includes('ペット箱')) {
+              labelBadge = `<span class="text-[10px] px-1.5 py-0.2 bg-amber-950 text-amber-300 border border-amber-800 rounded mr-1">宝箱</span>`;
+            }
+            return `<div class="text-xs text-slate-300 font-medium leading-relaxed my-0.5">${labelBadge}${escapeHtml(line)}</div>`;
+          })
+          .join('');
+
+        card.className = `glass-card rounded-xl p-4 flex flex-col justify-between transition-all duration-300 hover:border-slate-600 ${isMax ? 'border-amber-500/30' : ''}`;
+
+        card.innerHTML = `
+          <div>
+            <!-- ヘッダー -->
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <span class="inline-block px-2 py-0.5 rounded text-[10px] border mb-1.5 font-medium ${typeBadgeStyles[pet.type] || ''}">${pet.type}</span>
+                <h3 class="text-base font-bold text-slate-100 leading-snug">${escapeHtml(pet.name)}</h3>
+              </div>
+              <div>${statusBadge}</div>
+            </div>
+
+            <!-- 理解度操作バー -->
+            <div class="my-3 py-2 px-3 bg-slate-900/80 rounded-lg border border-slate-800 flex items-center justify-between">
+              <span class="text-xs text-slate-400 font-medium">ペット理解度</span>
+              <div class="flex items-center gap-2">
+                <button onclick="updatePetLevelQuick('${pet.id}', -1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs transition border border-slate-700" ${pet.level <= 0 ? 'disabled class="opacity-40 cursor-not-allowed"' : ''}>
+                  <i class="fa-solid fa-minus"></i>
+                </button>
+                <span class="text-sm font-bold font-cinzel ${isMax ? 'text-amber-400' : 'text-slate-200'}">Lv.${pet.level}</span>
+                <button onclick="updatePetLevelQuick('${pet.id}', 1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs transition border border-slate-700" ${pet.level >= 3 ? 'disabled class="opacity-40 cursor-not-allowed"' : ''}>
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 獲得場所 -->
+            <div class="mb-3 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+              <div class="text-[10px] text-amber-400/90 font-medium mb-1 flex items-center gap-1">
+                <i class="fa-solid fa-location-dot"></i> 獲得場所 / 入手方法:
+              </div>
+              ${locationFormatted}
+            </div>
+
+            <!-- 保有効果 -->
+            <div class="mb-3 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
+              <div class="text-[10px] text-slate-400 font-medium mb-0.5 flex items-center gap-1">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> 保有効果:
+              </div>
+              <div class="text-xs text-slate-200 font-medium">${escapeHtml(pet.effect || '効果なし')}</div>
+            </div>
+
+            <!-- メモ -->
+            ${pet.notes ? `
+              <div class="text-xs text-slate-400 bg-slate-900/40 p-2 rounded border border-slate-800/50 flex items-start gap-1.5 mb-3">
+                <i class="fa-solid fa-note-sticky text-slate-500 mt-0.5"></i>
+                <span class="break-words">${escapeHtml(pet.notes)}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- カード操作 -->
+          <div class="pt-2 border-t border-slate-800 flex justify-end gap-2 text-xs">
+            <button onclick="openModal('${pet.id}')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition flex items-center gap-1">
+              <i class="fa-solid fa-pen-to-square"></i> 編集
+            </button>
+            <button onclick="deletePet('${pet.id}')" class="px-2 py-1 bg-rose-950/30 hover:bg-rose-900/50 text-rose-400 rounded transition">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+
+        petGrid.appendChild(card);
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(petList, null, 2));
+      const anchor = document.createElement('a');
+      anchor.setAttribute("href", dataStr);
+      anchor.setAttribute("download", `aion2_pets_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    }
+
+    function importData(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const imported = JSON.parse(evt.target.result);
+          if (Array.isArray(imported)) {
+            petList = imported;
+            saveData();
+            alert('データを正常に復元しました。');
+          } else {
+            alert('無効なJSONファイル形式です。');
+          }
+        } catch (err) {
+          alert('ファイルの読み込みに失敗しました。');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    }
+
+    function resetData() {
+      if (confirm('全初期データ（知性・野生・自然・変形・特殊）にリセットしますか？')) {
+        petList = generateDefaultList();
+        saveData();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
